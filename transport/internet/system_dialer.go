@@ -169,7 +169,9 @@ func applyDirectInterfaceIfNeeded(ctx context.Context, sockopt *SocketConfig) *S
 	}
 
 	if sockopt.Interface == "" {
-		// Create a copy to avoid modifying the original config
+		// Create a shallow copy - this is safe because we only modify the Interface field
+		// which is a string (value type). Other fields share references with the original
+		// but are not modified.
 		newSockopt := *sockopt
 		newSockopt.Interface = inbound.DirectInterface
 		return &newSockopt
