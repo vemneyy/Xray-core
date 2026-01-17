@@ -55,16 +55,7 @@ func (d *DefaultSystemDialer) Dial(ctx context.Context, src net.Address, dest ne
 	// Check if DirectInterface is set in inbound context (e.g., from TUN) and Interface is not already set.
 	// This prevents traffic loops when TUN becomes the default route by binding direct/freedom connections
 	// to the physical interface specified in the TUN config.
-	if inbound := session.InboundFromContext(ctx); inbound != nil && inbound.DirectInterface != "" {
-		if sockopt == nil {
-			sockopt = &SocketConfig{Interface: inbound.DirectInterface}
-		} else if sockopt.Interface == "" {
-			// Create a copy to avoid modifying the original config
-			newSockopt := *sockopt
-			newSockopt.Interface = inbound.DirectInterface
-			sockopt = &newSockopt
-		}
-	}
+	sockopt = applyDirectInterfaceIfNeeded(ctx, sockopt)
 
 	if dest.Network == net.Network_UDP && !hasBindAddr(sockopt) {
 		srcAddr := resolveSrcAddr(net.Network_UDP, src)
@@ -162,6 +153,29 @@ func (d *DefaultSystemDialer) Dial(ctx context.Context, src net.Address, dest ne
 
 func (d *DefaultSystemDialer) DestIpAddress() net.IP {
 	return nil
+}
+
+// applyDirectInterfaceIfNeeded checks if DirectInterface is set in the inbound context
+// and applies it to sockopt if Interface is not already set.
+// This is used to prevent traffic loops when TUN becomes the default route.
+func applyDirectInterfaceIfNeeded(ctx context.Context, sockopt *SocketConfig) *SocketConfig {
+	inbound := session.InboundFromContext(ctx)
+	if inbound == nil || inbound.DirectInterface == "" {
+		return sockopt
+	}
+
+	if sockopt == nil {
+		return &SocketConfig{Interface: inbound.DirectInterface}
+	}
+
+	if sockopt.Interface == "" {
+		// Create a copy to avoid modifying the original config
+		newSockopt := *sockopt
+		newSockopt.Interface = inbound.DirectInterface
+		return &newSockopt
+	}
+
+	return sockopt
 }
 
 type PacketConnWrapper struct {
