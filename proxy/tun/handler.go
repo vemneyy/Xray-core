@@ -111,10 +111,11 @@ func (t *Handler) HandleConnection(conn net.Conn, destination net.Destination) {
 
 	source := net.DestinationFromAddr(conn.RemoteAddr())
 	inbound := session.Inbound{
-		Name:          "tun",
-		Tag:           t.tag,
-		CanSpliceCopy: 3,
-		Source:        source,
+		Name:            "tun",
+		Tag:             t.tag,
+		CanSpliceCopy:   3,
+		Source:          source,
+		DirectInterface: t.config.DirectInterface,
 		User: &protocol.MemoryUser{
 			Level: t.config.UserLevel,
 		},

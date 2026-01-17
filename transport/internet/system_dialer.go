@@ -9,6 +9,7 @@ import (
 	"github.com/sagernet/sing/common/control"
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/net"
+	"github.com/xtls/xray-core/common/session"
 	"github.com/xtls/xray-core/features/dns"
 	"github.com/xtls/xray-core/features/outbound"
 )
@@ -50,6 +51,20 @@ func hasBindAddr(sockopt *SocketConfig) bool {
 
 func (d *DefaultSystemDialer) Dial(ctx context.Context, src net.Address, dest net.Destination, sockopt *SocketConfig) (net.Conn, error) {
 	errors.LogDebug(ctx, "dialing to "+dest.String())
+
+	// Check if DirectInterface is set in inbound context (e.g., from TUN) and Interface is not already set.
+	// This prevents traffic loops when TUN becomes the default route by binding direct/freedom connections
+	// to the physical interface specified in the TUN config.
+	if inbound := session.InboundFromContext(ctx); inbound != nil && inbound.DirectInterface != "" {
+		if sockopt == nil {
+			sockopt = &SocketConfig{Interface: inbound.DirectInterface}
+		} else if sockopt.Interface == "" {
+			// Create a copy to avoid modifying the original config
+			newSockopt := *sockopt
+			newSockopt.Interface = inbound.DirectInterface
+			sockopt = &newSockopt
+		}
+	}
 
 	if dest.Network == net.Network_UDP && !hasBindAddr(sockopt) {
 		srcAddr := resolveSrcAddr(net.Network_UDP, src)

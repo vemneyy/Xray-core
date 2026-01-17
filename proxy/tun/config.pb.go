@@ -28,6 +28,10 @@ type Config struct {
 	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	MTU       uint32 `protobuf:"varint,2,opt,name=MTU,proto3" json:"MTU,omitempty"`
 	UserLevel uint32 `protobuf:"varint,3,opt,name=user_level,json=userLevel,proto3" json:"user_level,omitempty"`
+	// DirectInterface specifies the network interface name to use for direct outbound traffic.
+	// This prevents traffic loops when TUN becomes the default route.
+	// When set, direct/freedom outbound will bind to this interface to bypass TUN.
+	DirectInterface string `protobuf:"bytes,4,opt,name=direct_interface,json=directInterface,proto3" json:"direct_interface,omitempty"`
 }
 
 func (x *Config) Reset() {
@@ -79,6 +83,13 @@ func (x *Config) GetUserLevel() uint32 {
 		return x.UserLevel
 	}
 	return 0
+}
+
+func (x *Config) GetDirectInterface() string {
+	if x != nil {
+		return x.DirectInterface
+	}
+	return ""
 }
 
 var File_config_proto protoreflect.FileDescriptor

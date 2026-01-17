@@ -31,11 +31,67 @@ Here is simple Xray config snippet to enable the inbound:
       "protocol": "tun",
       "settings": {
         "name": "xray0",
-        "MTU": 1492
+        "MTU": 1492,
+        "directInterface": "eth0"
       }
     }
   ],
 ```
+
+### Configuration Options
+
+- `name`: The name of the TUN interface to create (default: "xray0")
+- `MTU`: Maximum Transmission Unit size (default: 1500)
+- `userLevel`: Policy level for the connection (default: 0)
+- `directInterface`: **Optional**. The physical network interface name to use for direct outbound traffic. When set, traffic routed to "direct" or "freedom" outbound will be bound to this interface, preventing traffic loops when TUN becomes the default route.
+
+### Preventing Traffic Loops with directInterface
+
+When using TUN as the default route (e.g., `ip route add 0.0.0.0/0 dev xray0`), traffic destined for the "direct" or "freedom" outbound would normally loop back through the TUN interface, causing infinite recursion. 
+
+The `directInterface` option solves this by binding outgoing direct traffic to a specific physical interface (e.g., "eth0", "wlan0"), bypassing the TUN interface.
+
+Example usage:
+```json
+{
+  "inbounds": [
+    {
+      "port": 0,
+      "protocol": "tun",
+      "settings": {
+        "name": "xray0",
+        "MTU": 1500,
+        "directInterface": "eth0"
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "vless",
+      "tag": "proxy"
+    },
+    {
+      "protocol": "freedom",
+      "tag": "direct"
+    },
+    {
+      "protocol": "blackhole",
+      "tag": "block"
+    }
+  ],
+  "routing": {
+    "rules": [
+      {
+        "type": "field",
+        "ip": ["geoip:private"],
+        "outboundTag": "direct"
+      }
+    ]
+  }
+}
+```
+
+With this configuration, traffic destined for private IP ranges will use the "direct" outbound, but will be bound to "eth0" interface instead of going through the TUN interface, preventing the traffic loop.
 
 ## SUPPORTED FEATURES
 

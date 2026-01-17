@@ -6,16 +6,18 @@ import (
 )
 
 type TunConfig struct {
-	Name      string `json:"name"`
-	MTU       uint32 `json:"MTU"`
-	UserLevel uint32 `json:"userLevel"`
+	Name            string `json:"name"`
+	MTU             uint32 `json:"MTU"`
+	UserLevel       uint32 `json:"userLevel"`
+	DirectInterface string `json:"directInterface"`
 }
 
 func (v *TunConfig) Build() (proto.Message, error) {
 	config := &tun.Config{
-		Name:      v.Name,
-		MTU:       v.MTU,
-		UserLevel: v.UserLevel,
+		Name:            v.Name,
+		MTU:             v.MTU,
+		UserLevel:       v.UserLevel,
+		DirectInterface: v.DirectInterface,
 	}
 
 	if v.Name == "" {
