@@ -9,6 +9,7 @@ import (
 	"github.com/sagernet/sing/common/control"
 	"github.com/xtls/xray-core/common/errors"
 	"github.com/xtls/xray-core/common/net"
+	"github.com/xtls/xray-core/common/session"
 	"github.com/xtls/xray-core/features/dns"
 	"github.com/xtls/xray-core/features/outbound"
 )
@@ -50,6 +51,11 @@ func hasBindAddr(sockopt *SocketConfig) bool {
 
 func (d *DefaultSystemDialer) Dial(ctx context.Context, src net.Address, dest net.Destination, sockopt *SocketConfig) (net.Conn, error) {
 	errors.LogDebug(ctx, "dialing to "+dest.String())
+
+	// Check if DirectInterface is set in inbound context (e.g., from TUN) and Interface is not already set.
+	// This prevents traffic loops when TUN becomes the default route by binding direct/freedom connections
+	// to the physical interface specified in the TUN config.
+	sockopt = applyDirectInterfaceIfNeeded(ctx, sockopt)
 
 	if dest.Network == net.Network_UDP && !hasBindAddr(sockopt) {
 		srcAddr := resolveSrcAddr(net.Network_UDP, src)
@@ -147,6 +153,31 @@ func (d *DefaultSystemDialer) Dial(ctx context.Context, src net.Address, dest ne
 
 func (d *DefaultSystemDialer) DestIpAddress() net.IP {
 	return nil
+}
+
+// applyDirectInterfaceIfNeeded checks if DirectInterface is set in the inbound context
+// and applies it to sockopt if Interface is not already set.
+// This is used to prevent traffic loops when TUN becomes the default route.
+func applyDirectInterfaceIfNeeded(ctx context.Context, sockopt *SocketConfig) *SocketConfig {
+	inbound := session.InboundFromContext(ctx)
+	if inbound == nil || inbound.DirectInterface == "" {
+		return sockopt
+	}
+
+	if sockopt == nil {
+		return &SocketConfig{Interface: inbound.DirectInterface}
+	}
+
+	if sockopt.Interface == "" {
+		// Create a shallow copy - this is safe because we only modify the Interface field
+		// which is a string (value type). Other fields share references with the original
+		// but are not modified.
+		newSockopt := *sockopt
+		newSockopt.Interface = inbound.DirectInterface
+		return &newSockopt
+	}
+
+	return sockopt
 }
 
 type PacketConnWrapper struct {

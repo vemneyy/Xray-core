@@ -55,6 +55,10 @@ type Inbound struct {
 	// CanSpliceCopy is a property for this connection
 	// 1 = can, 2 = after processing protocol info should be able to, 3 = cannot
 	CanSpliceCopy int
+	// DirectInterface specifies the network interface name to use for direct outbound traffic.
+	// This is used by TUN to prevent traffic loops when TUN becomes the default route.
+	// When set, direct/freedom outbound will bind to this interface to bypass TUN.
+	DirectInterface string
 }
 
 // Outbound is the metadata of an outbound connection.
